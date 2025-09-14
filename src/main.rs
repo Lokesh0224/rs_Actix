@@ -1,9 +1,15 @@
 mod api; 
+mod model;
 mod repository;
 
 use api::task::{
-    get_task
-}
+    get_task,
+    submit_task, 
+    start_task, 
+    fail_task, 
+    complete_task, 
+    pause_task
+};
 
 use actix_web::{HttpServer, App, web::Data, middleware::Logger};
 use repository::ddb::DDBRepository;
@@ -15,13 +21,29 @@ async fn main() -> std::io::Result<()> {
     env_logger::init();
 
     let config = aws_config::load_from_env().await;
-    
 
     HttpServer::new(move || {
-        let logger = Logger::default();
-        App::new().wrap(logger).app_data().service(get_task)
+        let ddb_repo = DDBRepository::init(
+            String::from("task"), 
+            config.clone());
+        let ddb_data = Data::new(ddb_repo);
+
+        let _logger = Logger::default();
+        App::new()
+        .wrap(Logger::default())
+        .app_data(ddb_data.clone())
+        .service(get_task)
+        .service(submit_task)
+        .service(fail_task)
+        .service(pause_task)
+        .service(start_task)
+        .service(complete_task)
+
+
     })
-    .bind(("127.0.0.1", 80))?
+    .bind(("127.0.0.1", 8080))?
     .run()
     .await
+
+    
 }
